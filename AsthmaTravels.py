@@ -1,6 +1,12 @@
+import config
+import random
+import requests
 from queue import Queue
 from datetime import datetime
-import random
+from geopy.geocoders import Nominatim
+from copy import deepcopy
+
+open_weather_key = config.apiKey
 
 places = {1:"San Diego",
     2:"Palm Springs",
@@ -50,25 +56,58 @@ class Patient:
         print("degree of senstitivity"+degreeOfSenstivity)
         print("Sensitive to AQI"+ AQIsensitive)
         print("Sensitive to Pollen Count"+PollenSensitive)
+
+class Node:
+    pass
+    #AQI, Pollen, etc
+
+class Edge:
+    pass
+    #Distance
+    #AQI average
+    #Pollen average
+    #(Node A, Node B)
     
+class Graph2:
+    pass
+    #self.nodes[0..n] = Node()
+    #self.edges[0..n] = Edge()
+    #collection of nodes and edges
+
 class Graph:
     def __init__(self):
         random.seed()
-        self.G={"San Diego":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Palm Springs":133,"Los Angeles":120},
-           "Palm Springs":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Los Angeles":107, "San Diego":133},
-           "Los Angeles":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Santa Barbara":96, "Bakersfield":112, "San Diego":120},
-           "Santa Barbara":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"San Luis Obispo":95, "Los Angeles":96},
-           "Bakersfield":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Fresno":109, "Los Angeles":112},
-           "San Luis Obispo":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Monterey":141, "San Jose":185, "Santa Barbara":95},
-           "Fresno":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Sacramento":169,"Bakersfield":109},
-           "Monterey":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"San Jose":73, "San Luis Obispo":141},
-           "San Jose":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Oakland":41, "San Francisco":48, "Monterey":73, "San Luis Obispo":185},
-           "Sacramento":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Napa":62, "Redding":160, "Fresno":169},
-           "Oakland":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Napa":42, "San Jose":41},
-           "San Francisco":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Napa":52, "San Jose":48},
-           "Napa":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Eureka":252, "Sacramento":62, "Oakland":42, "San Francisco":52},
-           "Eureka":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Redding":147, "Napa":252},
-           "Redding":{"AQI":random.randrange(0, 350),"Pollen":random.randrange(0, 100) / 10,"Eureka":147, "Sacramento":160}}
+        self.G={"San Diego":{"AQI": self.aqiData("San Diego")[0],"Pollen":self.aqiData("San Diego")[1],"Palm Springs":133,"Los Angeles":120},
+           "Palm Springs":{"AQI":self.aqiData("Palm Springs")[0],"Pollen":self.aqiData("Palm Springs")[1],"Los Angeles":107, "San Diego":133},
+           "Los Angeles":{"AQI":self.aqiData("Los Angeles")[0],"Pollen":self.aqiData("Los Angeles")[1],"Santa Barbara":96, "Bakersfield":112, "San Diego":120},
+           "Santa Barbara":{"AQI":self.aqiData("Santa Barbara")[0],"Pollen":self.aqiData("Santa Barbara")[1],"San Luis Obispo":95, "Los Angeles":96},
+           "Bakersfield":{"AQI":self.aqiData("Bakersfield")[0],"Pollen":self.aqiData("Bakersfield")[1],"Fresno":109, "Los Angeles":112},
+           "San Luis Obispo":{"AQI":self.aqiData("San Luis Obispo")[0],"Pollen":self.aqiData("San Luis Obispo")[1],"Monterey":141, "San Jose":185, "Santa Barbara":95},
+           "Fresno":{"AQI":self.aqiData("Fresno")[0],"Pollen":self.aqiData("Fresno")[1],"Sacramento":169,"Bakersfield":109},
+           "Monterey":{"AQI":self.aqiData("Monterey")[0],"Pollen":self.aqiData("Monterey")[1],"San Jose":73, "San Luis Obispo":141},
+           "San Jose":{"AQI":self.aqiData("San Jose")[0],"Pollen":self.aqiData("San Jose")[1],"Oakland":41, "San Francisco":48, "Monterey":73, "San Luis Obispo":185},
+           "Sacramento":{"AQI":self.aqiData("Sacramento")[0],"Pollen":self.aqiData("Sacramento")[1],"Napa":62, "Redding":160, "Fresno":169},
+           "Oakland":{"AQI":self.aqiData("Oakland")[0],"Pollen":self.aqiData("Oakland")[1],"Napa":42, "San Jose":41},
+           "San Francisco":{"AQI":self.aqiData("San Francisco")[0],"Pollen":self.aqiData("San Francisco")[1],"Napa":52, "San Jose":48},
+           "Napa":{"AQI":self.aqiData("Napa")[0],"Pollen":self.aqiData("Napa")[1],"Eureka":252, "Sacramento":62, "Oakland":42, "San Francisco":52},
+           "Eureka":{"AQI":self.aqiData("Eureka")[0],"Pollen":self.aqiData("Eureka")[1],"Redding":147, "Napa":252},
+           "Redding":{"AQI":self.aqiData("Redding")[0],"Pollen":self.aqiData("Redding")[1],"Eureka":147, "Sacramento":160}}
+    
+    def aqiData(self, city):
+        # Implementing API to get geolocation
+        loc = city
+        geolocation = Nominatim(user_agent="asthmaTravels")  # Making an instance of Nominatim class
+        locInfo = geolocation.geocode(loc)
+        locLat = locInfo.latitude
+        locLong = locInfo.longitude
+
+        ow_link = 'http://api.openweathermap.org/data/2.5/air_pollution?lat='+str(locLat)+'&lon='+str(locLong)+'&appid='+open_weather_key
+
+        api_link = requests.get(ow_link)
+        api_data = api_link.json()
+        airQual = api_data['list'][0]['main']['aqi']
+        partMatt = api_data['list'][0]['components']['pm2_5']
+        return airQual, partMatt
 
 #runs program with random inputs for locations and patient info
 def test():
@@ -140,6 +179,13 @@ def search(person, cities, source, dest):
        "Eureka":0,
        "Redding":0}
 
+    c = deepcopy(cities)
+    for key1, value1 in cost.items():
+        for key2, value2 in cities[key1].items():
+            if key2 != "AQI" and key2 != "Pollen":
+                if airQuality(person, cities[key1]["AQI"], cities[key1]["Pollen"]) != 0:
+                    del c[key1][key2]
+                    
     #Initialize a queue to keep track of the cities that need to be processed and costs calculated for
     q = Queue(maxsize = 0)
     q.put(source)
@@ -259,17 +305,17 @@ safetyCheck.__doc__
 
 def airQuality(person, AQI, pollen):
     #If the pollen or AQI counts are above these levels, the air isn't safe regardless of sensitivity
-    danger = safetyCheck(person.AQIsensitive, person.PollenSensitive, 300, 300, 9.7, 9.7, AQI, pollen)
+    danger = safetyCheck(person.AQIsensitive, person.PollenSensitive, 301, 301, 250.5, 250.5, AQI, pollen)
     if danger < 0:
         return danger
     elif person.degreeOfSensitivity == 1:
-        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 200, 300, 7.2, 9.7, AQI, pollen)
+        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 201, 300, 150.5, 250.4, AQI, pollen)
     elif person.degreeOfSensitivity == 2:
-        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 150, 200, 4.8, 7.2, AQI, pollen)
+        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 151, 200, 55.5, 150.4, AQI, pollen)
     elif person.degreeOfSensitivity == 3:
-        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 100, 150, 2.4, 4.8, AQI, pollen)
+        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 101, 150, 35.5, 55.4, AQI, pollen)
     elif person.degreeOfSensitivity == 4:
-        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 50, 100, 0, 2.4, AQI, pollen)
+        return safetyCheck(person.AQIsensitive, person.PollenSensitive, 51, 100, 12.1, 35.4, AQI, pollen)
 
 class AsthmaTrip():
     """ Initializes values with user input and finds best path """
@@ -300,7 +346,7 @@ class AsthmaTrip():
             if safety == 0:
                 print("The air quality in " + city + " is just fine today.")
             elif safety == -1:
-                print("The pollen count in " + city + " is notably high today at a level of " + str(self.g.G[city]["Pollen"]) + ".")
+                print("The Particle Matter 2.5 in " + city + " is notably high today at a level of " + str(self.g.G[city]["Pollen"]) + ".")
             elif safety == -2:
                 print("The AQI in " + city + " is notably high today at a level of " + str(self.g.G[city]["AQI"]) + ".")
             elif safety == -3:
@@ -342,8 +388,8 @@ class AsthmaTrip():
             AQIsensitive = False
 
         #get pollen sensitivity
-        Pollen = input('Are they sensitive to high pollen counts? (Y/N) ')
-        if (AQI == 'Y' or AQI == 'y'):
+        PM = input('Are they sensitive to higher levels of Particulate Matter (PM2.5)? (Y/N) ')
+        if (PM == 'Y' or PM == 'y'):
             PollenSensitive = True
         else:
             PollenSensitive = False
